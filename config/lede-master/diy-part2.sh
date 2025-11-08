@@ -12,14 +12,14 @@
 # sed -i 's/luci-theme-bootstrap/luci-theme-material/g' ./feeds/luci/collections/luci/Makefile
 
 # Add autocore support for armvirt
-sed -i 's/TARGET_rockchip/TARGET_rockchip\|\|TARGET_armvirt/g' package/lean/autocore/Makefile
+#sed -i 's/TARGET_rockchip/TARGET_rockchip\|\|TARGET_armvirt/g' package/lean/autocore/Makefile
 
 # Set etc/openwrt_release
 sed -i "s|DISTRIB_REVISION='.*'|DISTRIB_REVISION='R$(date +%Y.%m.%d)'|g" package/lean/default-settings/files/zzz-default-settings
 echo "DISTRIB_SOURCECODE='lede'" >>package/base-files/files/etc/openwrt_release
 
 # Modify default IP（FROM 192.168.1.1 CHANGE TO 192.168.31.4）
-# sed -i 's/192.168.1.1/192.168.31.4/g' package/base-files/files/bin/config_generate
+#sed -i 's/192.168.1.1/192.168.31.4/g' package/base-files/files/bin/config_generate
 
 # Replace the default software source
 # sed -i 's#openwrt.proxy.ustclug.org#mirrors.bfsu.edu.cn\\/openwrt#' package/lean/default-settings/files/zzz-default-settings
@@ -29,7 +29,7 @@ echo "DISTRIB_SOURCECODE='lede'" >>package/base-files/files/etc/openwrt_release
 # ------------------------------- Other started -------------------------------
 #
 # Add luci-app-amlogic
-svn co https://github.com/ophub/luci-app-amlogic/trunk/luci-app-amlogic package/luci-app-amlogic
+#svn co https://github.com/ophub/luci-app-amlogic/trunk/luci-app-amlogic package/luci-app-amlogic
 
 # Fix runc version error
 # rm -rf ./feeds/packages/utils/runc/Makefile
@@ -51,3 +51,29 @@ svn co https://github.com/ophub/luci-app-amlogic/trunk/luci-app-amlogic package/
 #
 # ------------------------------- Other ends -------------------------------
 
+# ------------------------------- Add ua2f for x86 platform -------------------------------
+#
+# Add ua2f and dependencies (HTTP fingerprint伪装工具)
+git clone https://github.com/Zxilly/UA2F.git package/ua2f
+
+# 为LuCI添加ua2f控制界面
+git clone https://github.com/Zxilly/luci-app-ua2f.git package/luci-app-ua2f
+
+# 确保中文支持
+if [ -f "package/luci-app-ua2f/po/Makefile" ]; then
+    sed -i "s/'en'/'en zh-cn'/g" package/luci-app-ua2f/po/Makefile
+fi
+
+# ------------------------------- Optimize for x86 platform -------------------------------
+# 启用x86特有硬件支持
+if [ -f "target/linux/x86/config-5.15" ]; then
+    sed -i "s/# CONFIG_KERNEL_CPU_FREQ is not set/CONFIG_KERNEL_CPU_FREQ=y/g" target/linux/x86/config-5.15  # CPU频率调节
+    sed -i "s/# CONFIG_KERNEL_HW_RANDOM is not set/CONFIG_KERNEL_HW_RANDOM=y/g" target/linux/x86/config-5.15  # 硬件随机数
+fi
+
+# 添加x86常用工具（磁盘、网络优化）
+if [ -f "target/linux/x86/Makefile" ]; then
+    sed -i "/DEFAULT_PACKAGES/ s/$/ parted fdisk e2fsprogs-extra ipset/" target/linux/x86/Makefile
+    # 集成网络加速组件
+    sed -i "/DEFAULT_PACKAGES/ s/$/ kmod-tcp-bbr kmod-nft-tproxy/" target/linux/x86/Makefile
+fi
